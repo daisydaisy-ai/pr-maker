@@ -33,7 +33,12 @@ label {
   color: #555;
   margin-bottom: 4px;
 }
-input, select {
+label .hint {
+  font-weight: 400;
+  color: #999;
+  font-size: 0.75rem;
+}
+input, select, textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1.5px solid #ddd;
@@ -41,7 +46,7 @@ input, select {
   font-size: 1rem;
   transition: border-color 0.2s;
 }
-input:focus, select:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: #4a90d9;
 }
@@ -132,11 +137,43 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 }
 .copy-btn:hover { background: #2db84d; }
 .copy-btn.copied { background: #888; }
+.api-section {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+.api-section label { color: #f57f17; }
+.api-section input { font-size: 0.85rem; }
+.api-section .hint-link {
+  font-size: 0.75rem;
+  color: #999;
+}
+.api-section .hint-link a { color: #4a90d9; }
+.saved-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  background: #34c759;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
 </style>
 </head>
 <body>
 <div class="container">
   <h1>📝 PR Maker</h1>
+
+  <div class="api-section">
+    <div class="field" style="margin-bottom:4px;">
+      <label for="api-key">🔑 Gemini APIキー <span class="hint">（ブラウザに保存、外部送信なし）</span> <span id="saved-badge" class="saved-badge" style="display:none;">保存済</span></label>
+      <input type="password" id="api-key" placeholder="AIza...">
+    </div>
+    <p class="hint-link"><a href="https://aistudio.google.com/apikey" target="_blank">APIキーを取得 →</a></p>
+  </div>
+
   <div class="field">
     <label for="url">ページURL</label>
     <input type="url" id="url" placeholder="https://example.com/page">
@@ -159,8 +196,12 @@ button:disabled { background: #aaa; cursor: not-allowed; }
       <input type="number" id="max-chars" value="140" min="10" max="5000">
     </div>
   </div>
-  <button id="generate-btn" onclick="generate()">投稿文を生成</button>
-  <div id="loading">⏳ ページを読み込み中...</div>
+  <div class="field">
+    <label for="extra-instruction">追加指示 <span class="hint">（任意）</span></label>
+    <input type="text" id="extra-instruction" placeholder="例: 絵文字を使って、堅めの文体で、など">
+  </div>
+  <button id="generate-btn" onclick="generate()">🤖 AI で投稿文を生成</button>
+  <div id="loading">🤖 AIが投稿文を考え中...</div>
   <div id="results">
     <details class="source-words">
       <summary>抽出した素材テキスト</summary>
@@ -171,18 +212,28 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 </div>
 <script>
 const platformLimits = {
-  'x': 140,
-  'instagram': 2200,
-  'facebook': 500,
-  'line': 500,
-  'ad-short': 30,
-  'ad-long': 90,
-  'custom': 140
+  'x': 140, 'instagram': 2200, 'facebook': 500,
+  'line': 500, 'ad-short': 30, 'ad-long': 90, 'custom': 140
+};
+const platformNames = {
+  'x': 'X（Twitter）', 'instagram': 'Instagram', 'facebook': 'Facebook',
+  'line': 'LINE', 'ad-short': '広告キャッチコピー（短文）', 'ad-long': '広告キャッチコピー（長文）', 'custom': 'SNS'
 };
 
+// Save/load API key from localStorage
+const apiKeyInput = document.getElementById('api-key');
+const savedKey = localStorage.getItem('pr-maker-api-key');
+if (savedKey) {
+  apiKeyInput.value = savedKey;
+  document.getElementById('saved-badge').style.display = 'inline-block';
+}
+apiKeyInput.addEventListener('change', function() {
+  localStorage.setItem('pr-maker-api-key', this.value);
+  document.getElementById('saved-badge').style.display = this.value ? 'inline-block' : 'none';
+});
+
 document.getElementById('platform').addEventListener('change', function() {
-  const limit = platformLimits[this.value] || 140;
-  document.getElementById('max-chars').value = limit;
+  document.getElementById('max-chars').value = platformLimits[this.value] || 140;
 });
 
 async function fetchPage(url) {
@@ -194,7 +245,6 @@ async function fetchPage(url) {
 
 function extractText(html) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  // Remove scripts, styles, nav, footer
   doc.querySelectorAll('script,style,nav,footer,header,iframe,noscript').forEach(el => el.remove());
 
   const title = doc.querySelector('title')?.textContent?.trim() || '';
@@ -214,7 +264,6 @@ function extractText(html) {
     if (t && t.length > 10 && t.length < 500) paragraphs.push(t);
   });
 
-  // Strong/em text as keywords
   const keywords = [];
   doc.querySelectorAll('strong,em,b').forEach(el => {
     const t = el.textContent.trim();
@@ -224,67 +273,79 @@ function extractText(html) {
   return { title, metaDesc, ogTitle, ogDesc, headings, paragraphs, keywords };
 }
 
-function generateTexts(data, maxChars, url) {
-  const results = [];
-  const t = data.ogTitle || data.title;
-  const d = data.ogDesc || data.metaDesc;
-  const h = data.headings;
-  const p = data.paragraphs;
-  const k = data.keywords;
+async function callGemini(apiKey, sourceText, platform, maxChars, extraInstruction) {
+  const platformName = platformNames[platform] || 'SNS';
+  const isAd = platform.startsWith('ad-');
 
-  // Pattern 1: Title + Description
-  if (t && d) {
-    let text = t + '\n' + d;
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: 'タイトル＋説明文', text });
+  let prompt;
+  if (isAd) {
+    prompt = `あなたはプロの広告コピーライターです。
+以下のWebページの内容だけを使って、${platformName}を${maxChars}字以内で5パターン作ってください。
+
+ルール：
+- ページに書かれている言葉だけを使うこと（勝手に情報を追加しない）
+- 各パターンは異なるアプローチで（疑問形、体言止め、数字活用、感情訴求、行動喚起）
+- 必ず${maxChars}字以内に収めること
+${extraInstruction ? '- ' + extraInstruction : ''}
+
+---ページ内容---
+${sourceText}
+---
+
+以下のJSON形式で出力してください（他のテキストは不要）：
+[{"label":"パターン名","text":"コピー文"}]`;
+  } else {
+    prompt = `あなたはSNS運用のプロです。
+以下のWebページの内容だけを使って、${platformName}向けの投稿文を${maxChars}字以内で5パターン作ってください。
+
+ルール：
+- ページに書かれている言葉だけを使うこと（勝手に情報を追加しない）
+- 各パターンは異なるトーンで（フォーマル、カジュアル、ニュース調、共感型、行動喚起型）
+- 必ず${maxChars}字以内に収めること
+- ハッシュタグは含めない
+${extraInstruction ? '- ' + extraInstruction : ''}
+
+---ページ内容---
+${sourceText}
+---
+
+以下のJSON形式で出力してください（他のテキストは不要）：
+[{"label":"パターン名","text":"投稿文"}]`;
   }
 
-  // Pattern 2: Title + first heading + URL
-  if (t) {
-    const extra = h.length > 0 ? '\n' + h[0] : '';
-    let text = t + extra;
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: 'タイトル＋見出し', text });
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.9 }
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error('Gemini API エラー: ' + (err.error?.message || res.status));
   }
 
-  // Pattern 3: Catchcopy from keywords + title
-  if (k.length > 0 || h.length > 0) {
-    const parts = k.length > 0 ? k.slice(0, 3) : h.slice(0, 2);
-    let text = parts.join('／');
-    if (t && text.length + t.length + 1 <= maxChars) text = text + '｜' + t;
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: 'キーワード型', text });
-  }
+  const json = await res.json();
+  const raw = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-  // Pattern 4: First paragraph excerpt
-  if (p.length > 0) {
-    let text = p[0];
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: '本文抜粋', text });
-  }
-
-  // Pattern 5: Headings list
-  if (h.length >= 2) {
-    let text = h.slice(0, 5).map(x => '・' + x).join('\n');
-    if (t && text.length + t.length + 2 <= maxChars) text = '【' + t + '】\n' + text;
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: '見出しリスト型', text });
-  }
-
-  // Pattern 6: Ad catch - short punch
-  if (k.length > 0 && t) {
-    let text = k[0] + '。' + (k[1] || t);
-    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
-    results.push({ label: 'キャッチコピー型', text });
-  }
-
-  return results;
+  // Extract JSON from response
+  const match = raw.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('AIの応答をパースできませんでした');
+  return JSON.parse(match[0]);
 }
 
 async function generate() {
+  const apiKey = document.getElementById('api-key').value.trim();
+  if (!apiKey) { alert('Gemini APIキーを入力してください'); return; }
+
   const url = document.getElementById('url').value.trim();
   if (!url) { alert('URLを入力してください'); return; }
+
+  const platform = document.getElementById('platform').value;
   const maxChars = parseInt(document.getElementById('max-chars').value) || 140;
+  const extraInstruction = document.getElementById('extra-instruction').value.trim();
 
   const btn = document.getElementById('generate-btn');
   btn.disabled = true;
@@ -292,46 +353,46 @@ async function generate() {
   document.getElementById('results').style.display = 'none';
 
   try {
+    // 1. Fetch and extract page text
     const html = await fetchPage(url);
     const data = extractText(html);
 
-    // Show source
     const sourceItems = [
       data.title && ('タイトル: ' + data.title),
       data.metaDesc && ('説明: ' + data.metaDesc),
       data.headings.length && ('見出し: ' + data.headings.join(' / ')),
       data.keywords.length && ('キーワード: ' + data.keywords.join(' / ')),
-      data.paragraphs.length && ('本文: ' + data.paragraphs.slice(0, 3).join(' | '))
+      data.paragraphs.length && ('本文: ' + data.paragraphs.slice(0, 5).join(' | '))
     ].filter(Boolean);
-    document.getElementById('source-text').textContent = sourceItems.join('\n\n');
+    const sourceText = sourceItems.join('\n');
+    document.getElementById('source-text').textContent = sourceText;
 
-    const texts = generateTexts(data, maxChars, url);
+    // 2. Call Gemini AI
+    document.getElementById('loading').textContent = '🤖 AIが投稿文を考え中...';
+    const texts = await callGemini(apiKey, sourceText, platform, maxChars, extraInstruction);
 
+    // 3. Display results
     const output = document.getElementById('output');
     output.innerHTML = '';
+    window._generatedTexts = texts;
 
-    if (texts.length === 0) {
-      output.innerHTML = '<p style="color:#999;text-align:center;">テキストを抽出できませんでした</p>';
-    } else {
-      texts.forEach((item, i) => {
-        const charCount = item.text.length;
-        const isOver = charCount > maxChars;
-        const card = document.createElement('div');
-        card.className = 'result-card';
-        card.innerHTML = `
-          <div class="label">${item.label}</div>
-          <div class="text">${escapeHtml(item.text)}</div>
-          <div class="meta">
-            <span class="char-count ${isOver ? 'over' : ''}">${charCount}/${maxChars}字</span>
-            <button class="copy-btn" onclick="copyText(this, ${i})">コピー</button>
-          </div>
-        `;
-        output.appendChild(card);
-      });
-    }
+    texts.forEach((item, i) => {
+      const charCount = item.text.length;
+      const isOver = charCount > maxChars;
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="label">${escapeHtml(item.label)}</div>
+        <div class="text">${escapeHtml(item.text)}</div>
+        <div class="meta">
+          <span class="char-count ${isOver ? 'over' : ''}">${charCount}/${maxChars}字</span>
+          <button class="copy-btn" onclick="copyText(this, ${i})">コピー</button>
+        </div>
+      `;
+      output.appendChild(card);
+    });
 
     document.getElementById('results').style.display = 'block';
-    window._generatedTexts = texts;
   } catch (e) {
     alert('エラー: ' + e.message);
   } finally {
@@ -345,10 +406,7 @@ function copyText(btn, idx) {
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = 'コピー済';
     btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = 'コピー';
-      btn.classList.remove('copied');
-    }, 2000);
+    setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
   });
 }
 
