@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PR Maker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f7;
+  min-height: 100vh;
+  padding: 20px;
+}
+.container {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 600px;
+  margin: 0 auto;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+h1 {
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.field { margin-bottom: 16px; }
+label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 4px;
+}
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: #4a90d9;
+}
+.row {
+  display: flex;
+  gap: 12px;
+}
+.row .field { flex: 1; }
+button {
+  width: 100%;
+  padding: 12px;
+  background: #4a90d9;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+button:hover { background: #3a7bc8; }
+button:disabled { background: #aaa; cursor: not-allowed; }
+#loading {
+  display: none;
+  text-align: center;
+  padding: 20px;
+  color: #888;
+}
+#results {
+  margin-top: 24px;
+  display: none;
+}
+.source-words {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f0f0f5;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #666;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.source-words summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #555;
+}
+.result-card {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.result-card .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4a90d9;
+  margin-bottom: 6px;
+}
+.result-card .text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
+.result-card .meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.char-count {
+  font-size: 0.8rem;
+  color: #999;
+}
+.char-count.over { color: #e74c3c; font-weight: 600; }
+.copy-btn {
+  padding: 4px 16px;
+  background: #34c759;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.copy-btn:hover { background: #2db84d; }
+.copy-btn.copied { background: #888; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📝 PR Maker</h1>
+  <div class="field">
+    <label for="url">ページURL</label>
+    <input type="url" id="url" placeholder="https://example.com/page">
+  </div>
+  <div class="row">
+    <div class="field">
+      <label for="platform">投稿先</label>
+      <select id="platform">
+        <option value="x">X（旧Twitter）- 140字</option>
+        <option value="instagram">Instagram - 2200字</option>
+        <option value="facebook">Facebook - 500字目安</option>
+        <option value="line">LINE - 500字目安</option>
+        <option value="ad-short">広告キャッチ（短）- 30字</option>
+        <option value="ad-long">広告キャッチ（長）- 90字</option>
+        <option value="custom">カスタム</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="max-chars">文字数上限</label>
+      <input type="number" id="max-chars" value="140" min="10" max="5000">
+    </div>
+  </div>
+  <button id="generate-btn" onclick="generate()">投稿文を生成</button>
+  <div id="loading">⏳ ページを読み込み中...</div>
+  <div id="results">
+    <details class="source-words">
+      <summary>抽出した素材テキスト</summary>
+      <p id="source-text"></p>
+    </details>
+    <div id="output"></div>
+  </div>
+</div>
+<script>
+const platformLimits = {
+  'x': 140,
+  'instagram': 2200,
+  'facebook': 500,
+  'line': 500,
+  'ad-short': 30,
+  'ad-long': 90,
+  'custom': 140
+};
+
+document.getElementById('platform').addEventListener('change', function() {
+  const limit = platformLimits[this.value] || 140;
+  document.getElementById('max-chars').value = limit;
+});
+
+async function fetchPage(url) {
+  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('ページの取得に失敗しました');
+  return await res.text();
+}
+
+function extractText(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  // Remove scripts, styles, nav, footer
+  doc.querySelectorAll('script,style,nav,footer,header,iframe,noscript').forEach(el => el.remove());
+
+  const title = doc.querySelector('title')?.textContent?.trim() || '';
+  const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim() || '';
+  const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim() || '';
+  const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim() || '';
+
+  const headings = [];
+  doc.querySelectorAll('h1,h2,h3').forEach(h => {
+    const t = h.textContent.trim();
+    if (t && t.length > 2 && t.length < 200) headings.push(t);
+  });
+
+  const paragraphs = [];
+  doc.querySelectorAll('p,li').forEach(p => {
+    const t = p.textContent.trim();
+    if (t && t.length > 10 && t.length < 500) paragraphs.push(t);
+  });
+
+  // Strong/em text as keywords
+  const keywords = [];
+  doc.querySelectorAll('strong,em,b').forEach(el => {
+    const t = el.textContent.trim();
+    if (t && t.length > 1 && t.length < 50) keywords.push(t);
+  });
+
+  return { title, metaDesc, ogTitle, ogDesc, headings, paragraphs, keywords };
+}
+
+function generateTexts(data, maxChars, url) {
+  const results = [];
+  const t = data.ogTitle || data.title;
+  const d = data.ogDesc || data.metaDesc;
+  const h = data.headings;
+  const p = data.paragraphs;
+  const k = data.keywords;
+
+  // Pattern 1: Title + Description
+  if (t && d) {
+    let text = t + '\n' + d;
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: 'タイトル＋説明文', text });
+  }
+
+  // Pattern 2: Title + first heading + URL
+  if (t) {
+    const extra = h.length > 0 ? '\n' + h[0] : '';
+    let text = t + extra;
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: 'タイトル＋見出し', text });
+  }
+
+  // Pattern 3: Catchcopy from keywords + title
+  if (k.length > 0 || h.length > 0) {
+    const parts = k.length > 0 ? k.slice(0, 3) : h.slice(0, 2);
+    let text = parts.join('／');
+    if (t && text.length + t.length + 1 <= maxChars) text = text + '｜' + t;
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: 'キーワード型', text });
+  }
+
+  // Pattern 4: First paragraph excerpt
+  if (p.length > 0) {
+    let text = p[0];
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: '本文抜粋', text });
+  }
+
+  // Pattern 5: Headings list
+  if (h.length >= 2) {
+    let text = h.slice(0, 5).map(x => '・' + x).join('\n');
+    if (t && text.length + t.length + 2 <= maxChars) text = '【' + t + '】\n' + text;
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: '見出しリスト型', text });
+  }
+
+  // Pattern 6: Ad catch - short punch
+  if (k.length > 0 && t) {
+    let text = k[0] + '。' + (k[1] || t);
+    if (text.length > maxChars) text = text.substring(0, maxChars - 1) + '…';
+    results.push({ label: 'キャッチコピー型', text });
+  }
+
+  return results;
+}
+
+async function generate() {
+  const url = document.getElementById('url').value.trim();
+  if (!url) { alert('URLを入力してください'); return; }
+  const maxChars = parseInt(document.getElementById('max-chars').value) || 140;
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+
+  try {
+    const html = await fetchPage(url);
+    const data = extractText(html);
+
+    // Show source
+    const sourceItems = [
+      data.title && ('タイトル: ' + data.title),
+      data.metaDesc && ('説明: ' + data.metaDesc),
+      data.headings.length && ('見出し: ' + data.headings.join(' / ')),
+      data.keywords.length && ('キーワード: ' + data.keywords.join(' / ')),
+      data.paragraphs.length && ('本文: ' + data.paragraphs.slice(0, 3).join(' | '))
+    ].filter(Boolean);
+    document.getElementById('source-text').textContent = sourceItems.join('\n\n');
+
+    const texts = generateTexts(data, maxChars, url);
+
+    const output = document.getElementById('output');
+    output.innerHTML = '';
+
+    if (texts.length === 0) {
+      output.innerHTML = '<p style="color:#999;text-align:center;">テキストを抽出できませんでした</p>';
+    } else {
+      texts.forEach((item, i) => {
+        const charCount = item.text.length;
+        const isOver = charCount > maxChars;
+        const card = document.createElement('div');
+        card.className = 'result-card';
+        card.innerHTML = `
+          <div class="label">${item.label}</div>
+          <div class="text">${escapeHtml(item.text)}</div>
+          <div class="meta">
+            <span class="char-count ${isOver ? 'over' : ''}">${charCount}/${maxChars}字</span>
+            <button class="copy-btn" onclick="copyText(this, ${i})">コピー</button>
+          </div>
+        `;
+        output.appendChild(card);
+      });
+    }
+
+    document.getElementById('results').style.display = 'block';
+    window._generatedTexts = texts;
+  } catch (e) {
+    alert('エラー: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+function copyText(btn, idx) {
+  const text = window._generatedTexts[idx].text;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'コピー済';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+</script>
+</body>
+</html>
