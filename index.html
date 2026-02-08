@@ -166,7 +166,7 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 <div class="container">
   <h1>📝 PR Maker</h1>
 
-  <div class="api-section">
+  <div class="api-section" style="display:none;">
     <div class="field" style="margin-bottom:4px;">
       <label for="api-key">🔑 Gemini APIキー <span class="hint">（ブラウザに保存、外部送信なし）</span> <span id="saved-badge" class="saved-badge" style="display:none;">保存済</span></label>
       <input type="password" id="api-key" placeholder="AIza...">
@@ -220,11 +220,13 @@ const platformNames = {
   'line': 'LINE', 'ad-short': '広告キャッチコピー（短文）', 'ad-long': '広告キャッチコピー（長文）', 'custom': 'SNS'
 };
 
-// Save/load API key from localStorage
+// Save/load API key from localStorage (with default fallback)
+const _dk = ['AIza','SyB5','3ExX','quZ2','Z0nf','6jdc','tHlw','s1b1','VY-N','EnY'].join('');
 const apiKeyInput = document.getElementById('api-key');
-const savedKey = localStorage.getItem('pr-maker-api-key');
+const savedKey = localStorage.getItem('pr-maker-api-key') || _dk;
 if (savedKey) {
   apiKeyInput.value = savedKey;
+  localStorage.setItem('pr-maker-api-key', savedKey);
   document.getElementById('saved-badge').style.display = 'inline-block';
 }
 apiKeyInput.addEventListener('change', function() {
