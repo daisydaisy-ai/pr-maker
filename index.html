@@ -166,12 +166,15 @@ button:disabled { background: #aaa; cursor: not-allowed; }
 <div class="container">
   <h1>📝 PR Maker</h1>
 
-  <div class="api-section" style="display:none;">
+  <div class="api-section">
     <div class="field" style="margin-bottom:4px;">
       <label for="api-key">🔑 Gemini APIキー <span class="hint">（ブラウザに保存、外部送信なし）</span> <span id="saved-badge" class="saved-badge" style="display:none;">保存済</span></label>
       <input type="password" id="api-key" placeholder="AIza...">
     </div>
-    <p class="hint-link"><a href="https://aistudio.google.com/apikey" target="_blank">APIキーを取得 →</a></p>
+    <details>
+      <summary style="font-size:0.75rem;color:#999;cursor:pointer;">デフォルトキーについて</summary>
+      <p class="hint-link" style="margin-top:4px;">共有キーを使用中。エラーが出る場合は<a href="https://aistudio.google.com/apikey" target="_blank">自分のキーを取得</a>してください。</p>
+    </details>
   </div>
 
   <div class="field">
@@ -239,10 +242,21 @@ document.getElementById('platform').addEventListener('change', function() {
 });
 
 async function fetchPage(url) {
-  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-  const res = await fetch(proxyUrl);
-  if (!res.ok) throw new Error('ページの取得に失敗しました');
-  return await res.text();
+  const proxies = [
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
+  ];
+
+  for (const p of proxies) {
+    try {
+      const res = await fetch(p(url));
+      if (!res.ok) continue;
+      return await res.text();
+    } catch (e) {
+      console.warn('Proxy failed:', e);
+    }
+  }
+  throw new Error('ページの取得に失敗しました（プロキシエラー）。URLを確認するか、時間をおいて試してください。');
 }
 
 function extractText(html) {
