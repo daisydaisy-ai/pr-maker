@@ -5,241 +5,822 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PR Maker</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  color-scheme: light dark;
+  --bg: oklch(0.97 0.01 140);
+  --panel: oklch(0.995 0.008 140 / 0.94);
+  --panel-strong: oklch(0.99 0.012 140);
+  --surface: oklch(0.985 0.01 140);
+  --surface-2: oklch(0.965 0.014 140);
+  --text: oklch(0.28 0.03 150);
+  --text-soft: oklch(0.5 0.02 150);
+  --text-faint: oklch(0.63 0.015 150);
+  --line: oklch(0.88 0.018 145);
+  --line-strong: oklch(0.78 0.03 145);
+  --accent: oklch(0.72 0.18 150);
+  --accent-strong: oklch(0.64 0.19 150);
+  --accent-soft: color-mix(in oklab, var(--accent) 14%, var(--panel));
+  --success: oklch(0.74 0.16 150);
+  --danger: oklch(0.62 0.21 25);
+  --shadow: 0 26px 70px oklch(0.25 0.03 150 / 0.11);
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 12px;
+  --ease: cubic-bezier(.19, 1, .22, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(0.18 0.02 150);
+    --panel: oklch(0.22 0.02 150 / 0.94);
+    --panel-strong: oklch(0.26 0.022 150);
+    --surface: oklch(0.25 0.018 150);
+    --surface-2: oklch(0.3 0.022 150);
+    --text: oklch(0.94 0.012 145);
+    --text-soft: oklch(0.8 0.015 145);
+    --text-faint: oklch(0.68 0.015 145);
+    --line: oklch(0.36 0.02 145);
+    --line-strong: oklch(0.49 0.03 145);
+    --accent: oklch(0.78 0.16 152);
+    --accent-strong: oklch(0.84 0.14 152);
+    --accent-soft: color-mix(in oklab, var(--accent) 14%, var(--panel));
+    --success: oklch(0.79 0.14 150);
+    --danger: oklch(0.72 0.18 25);
+    --shadow: 0 28px 80px oklch(0.02 0 0 / 0.38);
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f5f5f7;
   min-height: 100vh;
-  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--accent) 11%, transparent), transparent 30%),
+    radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 8%, transparent), transparent 25%),
+    linear-gradient(180deg, color-mix(in oklab, var(--bg) 82%, var(--panel)) 0%, var(--bg) 100%);
+  color: var(--text);
+  padding: clamp(16px, 2.5vw, 28px);
 }
-.container {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  max-width: 600px;
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+.shell {
+  width: min(100%, 1020px);
   margin: 0 auto;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
-h1 {
-  font-size: 1.5rem;
-  margin-bottom: 24px;
-  text-align: center;
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+  gap: clamp(18px, 3vw, 28px);
+  align-items: stretch;
 }
-.field { margin-bottom: 16px; }
-label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #555;
-  margin-bottom: 4px;
+
+.panel {
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  border: 1px solid color-mix(in oklab, var(--line) 78%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
 }
-label .hint {
-  font-weight: 400;
-  color: #999;
-  font-size: 0.75rem;
+
+.main-panel {
+  padding: clamp(22px, 4vw, 36px);
 }
-input, select, textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
-  transition: border-color 0.2s;
-}
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  border-color: #4a90d9;
-}
-.row {
+
+.topline {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: color-mix(in oklab, var(--accent-strong) 70%, var(--text));
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.saved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--success) 20%, var(--panel));
+  color: color-mix(in oklab, var(--success) 78%, var(--text));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.hero-copy h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4.8vw, 3.5rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+
+.hero-copy p {
+  margin: 14px 0 0;
+  max-width: 38ch;
+  color: var(--text-soft);
+  font-size: clamp(0.98rem, 1.4vw, 1.08rem);
+  line-height: 1.65;
+}
+
+.hero-aside {
+  padding: clamp(18px, 3vw, 24px);
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.quick-card {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 92%, transparent), color-mix(in oklab, var(--surface-2) 88%, transparent));
+  border: 1px solid color-mix(in oklab, var(--line) 82%, transparent);
+}
+
+.quick-card .eyebrow {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+
+.quick-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+
+.quick-card p {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.form-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 28px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 12px;
 }
-.row .field { flex: 1; }
-button {
+
+label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.hint, .inline-hint {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 180px);
+  gap: 14px;
+}
+
+.input, input, select, textarea {
   width: 100%;
-  padding: 12px;
-  background: #4a90d9;
-  color: white;
+  min-height: 52px;
+  padding: 14px 15px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  color: var(--text);
+  transition: border-color 180ms var(--ease), background 180ms var(--ease), transform 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+
+textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-faint);
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: var(--line-strong);
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+.api-box {
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 9%, var(--panel)), color-mix(in oklab, var(--surface) 88%, transparent));
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--line));
+}
+
+.api-box details {
+  margin-top: 10px;
+}
+
+.api-box summary {
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+.api-box a {
+  color: var(--accent-strong);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+button {
+  appearance: none;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
+}
+
+.primary-btn {
+  min-height: 56px;
+  padding: 0 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: oklch(0.98 0.01 150);
+  font-weight: 800;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  margin-top: 8px;
-  transition: background 0.2s;
+  box-shadow: 0 18px 34px color-mix(in oklab, var(--accent) 28%, transparent);
+  transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), filter 180ms var(--ease), opacity 180ms var(--ease);
 }
-button:hover { background: #3a7bc8; }
-button:disabled { background: #aaa; cursor: not-allowed; }
-#loading {
+
+.primary-btn:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 22px 40px color-mix(in oklab, var(--accent) 34%, transparent);
+  filter: saturate(1.04);
+}
+
+.primary-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.995);
+}
+
+.primary-btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+  box-shadow: none;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  min-height: 24px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 28%, transparent);
+}
+
+.status.is-loading .status-dot {
+  animation: pulse 1.2s var(--ease) infinite;
+}
+
+.results-wrap {
   display: none;
-  text-align: center;
-  padding: 20px;
-  color: #888;
+  margin-top: clamp(18px, 3vw, 28px);
 }
-#results {
-  margin-top: 24px;
-  display: none;
-}
-.source-words {
-  margin-bottom: 16px;
-  padding: 12px;
-  background: #f0f0f5;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  color: #666;
-  max-height: 120px;
-  overflow-y: auto;
-}
-.source-words summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: #555;
-}
-.result-card {
-  background: #fafafa;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 12px;
-}
-.result-card .label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #4a90d9;
-  margin-bottom: 6px;
-}
-.result-card .text {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: #333;
-  margin-bottom: 8px;
-  white-space: pre-wrap;
-}
-.result-card .meta {
+
+.results-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
-.char-count {
-  font-size: 0.8rem;
-  color: #999;
-}
-.char-count.over { color: #e74c3c; font-weight: 600; }
-.copy-btn {
-  padding: 4px 16px;
-  background: #34c759;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  font-weight: 600;
-}
-.copy-btn:hover { background: #2db84d; }
-.copy-btn.copied { background: #888; }
-.api-section {
-  background: #fff8e1;
-  border: 1px solid #ffe082;
-  border-radius: 8px;
-  padding: 12px;
+  align-items: end;
+  gap: 16px;
   margin-bottom: 16px;
 }
-.api-section label { color: #f57f17; }
-.api-section input { font-size: 0.85rem; }
-.api-section .hint-link {
-  font-size: 0.75rem;
-  color: #999;
+
+.results-head h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  letter-spacing: -0.03em;
 }
-.api-section .hint-link a { color: #4a90d9; }
-.saved-badge {
-  display: inline-block;
-  font-size: 0.7rem;
-  background: #34c759;
-  color: white;
-  padding: 1px 6px;
-  border-radius: 4px;
-  margin-left: 6px;
+
+.results-head p {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.source-box {
+  margin-bottom: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: color-mix(in oklab, var(--surface) 92%, transparent);
+  overflow: clip;
+}
+
+.source-box summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font-weight: 700;
+}
+
+.source-box summary::-webkit-details-marker { display: none; }
+
+.source-content {
+  border-top: 1px solid var(--line);
+  padding: 0 16px 16px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text-soft);
+  white-space: pre-wrap;
+}
+
+.output-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.result-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent), color-mix(in oklab, var(--panel-strong) 96%, transparent));
+  transition: transform 180ms var(--ease), border-color 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+
+.result-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--line));
+  box-shadow: 0 18px 32px color-mix(in oklab, var(--text) 8%, transparent);
+}
+
+.result-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent-strong) 75%, var(--accent)) 100%);
+}
+
+.result-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.result-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--accent-strong) 72%, var(--text));
+}
+
+.char-count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.char-count.over {
+  color: var(--danger);
+}
+
+.result-text {
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 1rem;
+  white-space: pre-wrap;
+}
+
+.result-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.copy-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  color: color-mix(in oklab, var(--accent-strong) 70%, var(--text));
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 180ms var(--ease), background 180ms var(--ease), border-color 180ms var(--ease);
+}
+
+.copy-btn:hover {
+  transform: translateY(-1px);
+  background: color-mix(in oklab, var(--accent) 18%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--line));
+}
+
+.copy-btn.copied {
+  background: color-mix(in oklab, var(--success) 18%, var(--surface));
+  color: color-mix(in oklab, var(--success) 76%, var(--text));
+  border-color: color-mix(in oklab, var(--success) 28%, var(--line));
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  text-align: center;
+  padding: 28px;
+  color: var(--text-soft);
+}
+
+.empty-state strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 1.02rem;
+}
+
+.error-banner {
+  display: none;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklab, var(--danger) 28%, var(--line));
+  background: color-mix(in oklab, var(--danger) 10%, var(--panel));
+  color: color-mix(in oklab, var(--danger) 70%, var(--text));
+  line-height: 1.55;
+}
+
+.fade-up {
+  animation: fadeUp 520ms var(--ease) both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 32%, transparent); }
+  100% { box-shadow: 0 0 0 14px color-mix(in oklab, var(--accent) 0%, transparent); }
+}
+
+@media (max-width: 880px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 12px;
+  }
+
+  .main-panel, .hero-aside {
+    padding: 18px;
+  }
+
+  .row, .results-head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .topline, .field-header {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .actions {
+    align-items: stretch;
+  }
+
+  .primary-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>📝 PR Maker</h1>
+  <main class="shell">
+    <section class="hero">
+      <div class="panel main-panel fade-up">
+        <div class="topline">
+          <span class="badge">PR Maker</span>
+          <span id="saved-badge" class="saved-badge" style="display:none;">APIキー保存済み</span>
+        </div>
 
-  <div class="api-section">
-    <div class="field" style="margin-bottom:4px;">
-      <label for="api-key">🔑 Gemini APIキー <span class="hint">（ブラウザに保存、外部送信なし）</span> <span id="saved-badge" class="saved-badge" style="display:none;">保存済</span></label>
-      <input type="password" id="api-key" placeholder="AIza...">
-    </div>
-    <details>
-      <summary style="font-size:0.75rem;color:#999;cursor:pointer;">デフォルトキーについて</summary>
-      <p class="hint-link" style="margin-top:4px;">共有キーを使用中。エラーが出る場合は<a href="https://aistudio.google.com/apikey" target="_blank">自分のキーを取得</a>してください。</p>
-    </details>
-  </div>
+        <div class="hero-copy">
+          <h1>ページURLから、<br>すぐ投稿文。</h1>
+          <p>必要なのはURLだけ。素材を拾って、投稿先に合わせた文案を5案まとめて出します。迷わず、速く、気持ちよく。</p>
+        </div>
 
-  <div class="field">
-    <label for="url">ページURL</label>
-    <input type="url" id="url" placeholder="https://example.com/page">
-  </div>
-  <div class="row">
-    <div class="field">
-      <label for="platform">投稿先</label>
-      <select id="platform">
-        <option value="x">X（旧Twitter）- 140字</option>
-        <option value="instagram">Instagram - 2200字</option>
-        <option value="facebook">Facebook - 500字目安</option>
-        <option value="line">LINE - 500字目安</option>
-        <option value="ad-short">広告キャッチ（短）- 30字</option>
-        <option value="ad-long">広告キャッチ（長）- 90字</option>
-        <option value="custom">カスタム</option>
-      </select>
-    </div>
-    <div class="field">
-      <label for="max-chars">文字数上限</label>
-      <input type="number" id="max-chars" value="140" min="10" max="5000">
-    </div>
-  </div>
-  <div class="field">
-    <label for="extra-instruction">追加指示 <span class="hint">（任意）</span></label>
-    <input type="text" id="extra-instruction" placeholder="例: 絵文字を使って、堅めの文体で、など">
-  </div>
-  <button id="generate-btn" onclick="generate()">🤖 AI で投稿文を生成</button>
-  <div id="loading">🤖 AIが投稿文を考え中...</div>
-  <div id="results">
-    <details class="source-words">
-      <summary>抽出した素材テキスト</summary>
-      <p id="source-text"></p>
-    </details>
-    <div id="output"></div>
-  </div>
-</div>
+        <form class="form-grid" onsubmit="event.preventDefault(); generate();">
+          <section class="api-box" aria-label="API設定">
+            <div class="field">
+              <div class="field-header">
+                <label for="api-key">Gemini APIキー</label>
+                <span class="inline-hint">ブラウザ保存のみ</span>
+              </div>
+              <input type="password" id="api-key" autocomplete="off" placeholder="AIza...">
+            </div>
+            <details>
+              <summary>共有キーについて</summary>
+              <div class="hint" style="margin-top:8px;">
+                共有キーが入っています。うまく動かないときは
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">自分のキーを取得</a>
+                してください。
+              </div>
+            </details>
+          </section>
+
+          <div class="field">
+            <div class="field-header">
+              <label for="url">ページURL</label>
+              <span class="inline-hint">投稿文の元になるページ</span>
+            </div>
+            <input type="url" id="url" inputmode="url" placeholder="https://example.com/page" required>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <div class="field-header">
+                <label for="platform">投稿先</label>
+              </div>
+              <select id="platform">
+                <option value="x">X（旧Twitter）- 140字</option>
+                <option value="instagram">Instagram - 2200字</option>
+                <option value="facebook">Facebook - 500字目安</option>
+                <option value="line">LINE - 500字目安</option>
+                <option value="ad-short">広告キャッチ（短）- 30字</option>
+                <option value="ad-long">広告キャッチ（長）- 90字</option>
+                <option value="custom">カスタム</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="field-header">
+                <label for="max-chars">文字数上限</label>
+              </div>
+              <input type="number" id="max-chars" value="140" min="10" max="5000">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-header">
+              <label for="model-preset">Geminiモデル</label>
+              <span class="inline-hint">3.1系を選択可</span>
+            </div>
+            <div class="row">
+              <select id="model-preset">
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
+                <option value="gemini-3.1-flash-lite-preview" selected>Gemini 3.1 Flash-Lite Preview</option>
+              </select>
+              <input type="text" id="model-name" value="gemini-3.1-flash-lite-preview" placeholder="gemini-3.1-flash-lite-preview" aria-label="Gemini model name" readonly>
+            </div>
+            <div id="pricing-note" class="hint">料金目安を下に表示します。Flash-Lite は無料枠あり、Pro は有料のみです。</div>
+          </div>
+
+          <section class="quick-card" aria-label="料金目安">
+            <span class="eyebrow">Pricing</span>
+            <strong id="price-headline">Gemini 3.1 Flash-Lite Preview</strong>
+            <p id="price-summary">入力 $0.25 / 1M tokens、出力 $1.50 / 1M tokens。Free Tier あり。</p>
+            <p id="price-estimate" class="inline-hint">概算は生成後に表示します。</p>
+          </section>
+
+          <div class="field">
+            <div class="field-header">
+              <label for="extra-instruction">追加指示</label>
+              <span class="inline-hint">任意</span>
+            </div>
+            <textarea id="extra-instruction" placeholder="例：少し熱量高め、絵文字は控えめ、やさしい口調 など"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="primary-btn" id="generate-btn" type="submit">5案つくる</button>
+            <div id="loading" class="status" aria-live="polite">
+              <span class="status-dot"></span>
+              <span id="loading-text">入力するとここに進行が出ます</span>
+            </div>
+          </div>
+
+          <div id="error-banner" class="error-banner" role="alert"></div>
+        </form>
+      </div>
+
+      <aside class="panel hero-aside fade-up" style="animation-delay: 70ms;">
+        <div class="quick-card">
+          <span class="eyebrow">Flow</span>
+          <strong>URLを入れる → 生成 → コピペ</strong>
+          <p>説明は短く。操作はもっと短く。最短3ステップで使えます。</p>
+        </div>
+        <div class="quick-card">
+          <span class="eyebrow">Output</span>
+          <strong>トーン違いで5パターン</strong>
+          <p>同じ素材から、投稿先に合わせて温度差のある案を並べます。</p>
+        </div>
+        <div class="quick-card">
+          <span class="eyebrow">Feel</span>
+          <strong>明快で、少し上がる。</strong>
+          <p>LINEっぽい親しみやすさを土台に、軽やかなモーションで気持ちよく。</p>
+        </div>
+      </aside>
+    </section>
+
+    <section id="results" class="results-wrap fade-up" aria-live="polite">
+      <div class="results-head">
+        <div>
+          <h2>生成結果</h2>
+          <p>気に入った案をそのままコピーできます。</p>
+        </div>
+      </div>
+
+      <details class="source-box">
+        <summary>抽出した素材をみる</summary>
+        <div class="source-content" id="source-text"></div>
+      </details>
+
+      <div id="output" class="output-grid">
+        <div class="empty-state">
+          <div>
+            <strong>まだ生成していません</strong>
+            URLを入れて「5案つくる」を押すと、ここに結果が出ます。
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 <script>
 const platformLimits = {
-  'x': 140, 'instagram': 2200, 'facebook': 500,
-  'line': 500, 'ad-short': 30, 'ad-long': 90, 'custom': 140
-};
-const platformNames = {
-  'x': 'X（Twitter）', 'instagram': 'Instagram', 'facebook': 'Facebook',
-  'line': 'LINE', 'ad-short': '広告キャッチコピー（短文）', 'ad-long': '広告キャッチコピー（長文）', 'custom': 'SNS'
+  x: 140,
+  instagram: 2200,
+  facebook: 500,
+  line: 500,
+  'ad-short': 30,
+  'ad-long': 90,
+  custom: 140
 };
 
-// Save/load API key from localStorage (with default fallback)
-const _dk = ['AIza','SyB5','3ExX','quZ2','Z0nf','6jdc','tHlw','s1b1','VY-N','EnY'].join('');
+const platformNames = {
+  x: 'X（Twitter）',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  line: 'LINE',
+  'ad-short': '広告キャッチコピー（短文）',
+  'ad-long': '広告キャッチコピー（長文）',
+  custom: 'SNS'
+};
+
+const defaultKey = ['AIza', 'SyB5', '3ExX', 'quZ2', 'Z0nf', '6jdc', 'tHlw', 's1b1', 'VY-N', 'EnY'].join('');
+const MODEL_PRICING = {
+  'gemini-3.1-pro-preview': {
+    label: 'Gemini 3.1 Pro Preview',
+    inputPerMillion: 2.0,
+    outputPerMillion: 12.0,
+    freeTier: false,
+    note: '標準料金。200k tokens超の長大プロンプトでは単価が上がります。'
+  },
+  'gemini-3.1-flash-lite-preview': {
+    label: 'Gemini 3.1 Flash-Lite Preview',
+    inputPerMillion: 0.25,
+    outputPerMillion: 1.5,
+    freeTier: true,
+    note: '標準料金。Free Tier ではテキスト入出力は無料です。'
+  }
+};
 const apiKeyInput = document.getElementById('api-key');
-const savedKey = localStorage.getItem('pr-maker-api-key') || _dk;
+const savedBadge = document.getElementById('saved-badge');
+const platformSelect = document.getElementById('platform');
+const maxCharsInput = document.getElementById('max-chars');
+const modelPresetSelect = document.getElementById('model-preset');
+const modelNameInput = document.getElementById('model-name');
+const generateBtn = document.getElementById('generate-btn');
+const results = document.getElementById('results');
+const output = document.getElementById('output');
+const sourceTextEl = document.getElementById('source-text');
+const loading = document.getElementById('loading');
+const loadingText = document.getElementById('loading-text');
+const errorBanner = document.getElementById('error-banner');
+const priceHeadline = document.getElementById('price-headline');
+const priceSummary = document.getElementById('price-summary');
+const priceEstimate = document.getElementById('price-estimate');
+
+function updateSavedBadge(value) {
+  savedBadge.style.display = value ? 'inline-flex' : 'none';
+}
+
+const savedKey = localStorage.getItem('pr-maker-api-key') || defaultKey;
+const savedModel = localStorage.getItem('pr-maker-model-name') || 'gemini-3.1-flash-lite-preview';
+
 if (savedKey) {
   apiKeyInput.value = savedKey;
   localStorage.setItem('pr-maker-api-key', savedKey);
-  document.getElementById('saved-badge').style.display = 'inline-block';
 }
-apiKeyInput.addEventListener('change', function() {
-  localStorage.setItem('pr-maker-api-key', this.value);
-  document.getElementById('saved-badge').style.display = this.value ? 'inline-block' : 'none';
+
+modelNameInput.value = MODEL_PRICING[savedModel] ? savedModel : 'gemini-3.1-flash-lite-preview';
+modelPresetSelect.value = modelNameInput.value;
+
+updateSavedBadge(apiKeyInput.value.trim());
+
+apiKeyInput.addEventListener('change', function () {
+  const value = this.value.trim();
+  localStorage.setItem('pr-maker-api-key', value);
+  updateSavedBadge(value);
 });
 
-document.getElementById('platform').addEventListener('change', function() {
-  document.getElementById('max-chars').value = platformLimits[this.value] || 140;
+function updatePricingUI(modelName) {
+  const pricing = MODEL_PRICING[modelName];
+  if (!pricing) return;
+  priceHeadline.textContent = pricing.label;
+  priceSummary.textContent = `入力 $${pricing.inputPerMillion.toFixed(2)} / 1M tokens、出力 $${pricing.outputPerMillion.toFixed(2)} / 1M tokens。${pricing.freeTier ? 'Free Tier あり。' : 'Free Tier なし。'}`;
+  if (!priceEstimate.dataset.locked) {
+    priceEstimate.textContent = `${pricing.note} 概算は生成後に表示します。`;
+  }
+}
+
+function estimateTokens(text) {
+  return Math.max(1, Math.ceil((text || '').length / 4));
+}
+
+function formatUsd(value) {
+  if (value < 0.0001) return '$0.0000';
+  if (value < 0.01) return `$${value.toFixed(4)}`;
+  return `$${value.toFixed(3)}`;
+}
+
+platformSelect.addEventListener('change', function () {
+  maxCharsInput.value = platformLimits[this.value] || 140;
 });
+
+modelPresetSelect.addEventListener('change', function () {
+  modelNameInput.value = this.value;
+  localStorage.setItem('pr-maker-model-name', this.value);
+  updatePricingUI(this.value);
+});
+
+function setStatus(message, isLoading = false) {
+  loadingText.textContent = message;
+  loading.classList.toggle('is-loading', isLoading);
+}
+
+function showError(message) {
+  errorBanner.textContent = message;
+  errorBanner.style.display = 'block';
+}
+
+function clearError() {
+  errorBanner.textContent = '';
+  errorBanner.style.display = 'none';
+}
 
 async function fetchPage(url) {
   const proxies = [
@@ -247,16 +828,17 @@ async function fetchPage(url) {
     u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
   ];
 
-  for (const p of proxies) {
+  for (const proxy of proxies) {
     try {
-      const res = await fetch(p(url));
+      const res = await fetch(proxy(url));
       if (!res.ok) continue;
       return await res.text();
-    } catch (e) {
-      console.warn('Proxy failed:', e);
+    } catch (error) {
+      console.warn('Proxy failed:', error);
     }
   }
-  throw new Error('ページの取得に失敗しました（プロキシエラー）。URLを確認するか、時間をおいて試してください。');
+
+  throw new Error('ページを取得できませんでした。URLを確認して、少し時間をおいて試してください。');
 }
 
 function extractText(html) {
@@ -270,32 +852,31 @@ function extractText(html) {
 
   const headings = [];
   doc.querySelectorAll('h1,h2,h3').forEach(h => {
-    const t = h.textContent.trim();
-    if (t && t.length > 2 && t.length < 200) headings.push(t);
+    const text = h.textContent.trim();
+    if (text && text.length > 2 && text.length < 200) headings.push(text);
   });
 
   const paragraphs = [];
   doc.querySelectorAll('p,li').forEach(p => {
-    const t = p.textContent.trim();
-    if (t && t.length > 10 && t.length < 500) paragraphs.push(t);
+    const text = p.textContent.trim();
+    if (text && text.length > 10 && text.length < 500) paragraphs.push(text);
   });
 
   const keywords = [];
   doc.querySelectorAll('strong,em,b').forEach(el => {
-    const t = el.textContent.trim();
-    if (t && t.length > 1 && t.length < 50) keywords.push(t);
+    const text = el.textContent.trim();
+    if (text && text.length > 1 && text.length < 50) keywords.push(text);
   });
 
   return { title, metaDesc, ogTitle, ogDesc, headings, paragraphs, keywords };
 }
 
-async function callGemini(apiKey, sourceText, platform, maxChars, extraInstruction) {
+async function callGemini(apiKey, modelName, sourceText, platform, maxChars, extraInstruction) {
   const platformName = platformNames[platform] || 'SNS';
   const isAd = platform.startsWith('ad-');
 
-  let prompt;
-  if (isAd) {
-    prompt = `あなたはプロの広告コピーライターです。
+  const prompt = isAd
+    ? `あなたはプロの広告コピーライターです。
 以下のWebページの内容だけを使って、${platformName}を${maxChars}字以内で5パターン作ってください。
 
 ルール：
@@ -309,9 +890,8 @@ ${sourceText}
 ---
 
 以下のJSON形式で出力してください（他のテキストは不要）：
-[{"label":"パターン名","text":"コピー文"}]`;
-  } else {
-    prompt = `あなたはSNS運用のプロです。
+[{"label":"パターン名","text":"コピー文"}]`
+    : `あなたはSNS運用のプロです。
 以下のWebページの内容だけを使って、${platformName}向けの投稿文を${maxChars}字以内で5パターン作ってください。
 
 ルール：
@@ -327,9 +907,8 @@ ${sourceText}
 
 以下のJSON形式で出力してください（他のテキストは不要）：
 [{"label":"パターン名","text":"投稿文"}]`;
-  }
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -340,95 +919,144 @@ ${sourceText}
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error('Gemini API エラー: ' + (err.error?.message || res.status));
+    throw new Error('Gemini API エラー（' + modelName + '）: ' + (err.error?.message || res.status));
   }
 
   const json = await res.json();
   const raw = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-  // Extract JSON from response
   const match = raw.match(/\[[\s\S]*\]/);
-  if (!match) throw new Error('AIの応答をパースできませんでした');
+  if (!match) throw new Error('AIの応答を読み取れませんでした。もう一度試してください。');
   return JSON.parse(match[0]);
 }
 
+function updateCostEstimate(modelName, sourceText, texts) {
+  const pricing = MODEL_PRICING[modelName];
+  if (!pricing) return;
+
+  const promptOverhead = estimateTokens('system prompt and instructions');
+  const inputTokens = estimateTokens(sourceText) + promptOverhead;
+  const outputTokens = texts.reduce((sum, item) => sum + estimateTokens(item.text || ''), 0);
+  const inputCost = (inputTokens / 1000000) * pricing.inputPerMillion;
+  const outputCost = (outputTokens / 1000000) * pricing.outputPerMillion;
+  const totalCost = inputCost + outputCost;
+
+  priceEstimate.dataset.locked = 'true';
+  priceEstimate.textContent = `概算: 入力 約${inputTokens.toLocaleString()} tokens / ${formatUsd(inputCost)} + 出力 約${outputTokens.toLocaleString()} tokens / ${formatUsd(outputCost)} = 合計 ${formatUsd(totalCost)}。文字数ベースの概算です。`;
+}
+
+function renderResults(texts, maxChars) {
+  output.innerHTML = '';
+  window._generatedTexts = texts;
+
+  texts.forEach((item, index) => {
+    const charCount = item.text.length;
+    const isOver = charCount > maxChars;
+    const card = document.createElement('article');
+    card.className = 'result-card fade-up';
+    card.style.animationDelay = `${index * 55}ms`;
+    card.innerHTML = `
+      <div class="result-top">
+        <div class="result-label">${escapeHtml(item.label)}</div>
+        <span class="char-count ${isOver ? 'over' : ''}">${charCount}/${maxChars}字</span>
+      </div>
+      <div class="result-text">${escapeHtml(item.text)}</div>
+      <div class="result-actions">
+        <button class="copy-btn" type="button" onclick="copyText(this, ${index})">コピー</button>
+      </div>
+    `;
+    output.appendChild(card);
+  });
+}
+
 async function generate() {
-  const apiKey = document.getElementById('api-key').value.trim();
-  if (!apiKey) { alert('Gemini APIキーを入力してください'); return; }
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) {
+    showError('Gemini APIキーを入力してください。');
+    apiKeyInput.focus();
+    return;
+  }
 
   const url = document.getElementById('url').value.trim();
-  if (!url) { alert('URLを入力してください'); return; }
+  if (!url) {
+    showError('ページURLを入力してください。');
+    document.getElementById('url').focus();
+    return;
+  }
 
-  const platform = document.getElementById('platform').value;
-  const maxChars = parseInt(document.getElementById('max-chars').value) || 140;
+  const platform = platformSelect.value;
+  const maxChars = parseInt(maxCharsInput.value, 10) || 140;
+  const modelName = modelNameInput.value.trim();
   const extraInstruction = document.getElementById('extra-instruction').value.trim();
 
-  const btn = document.getElementById('generate-btn');
-  btn.disabled = true;
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('results').style.display = 'none';
+  if (!modelName) {
+    showError('Geminiモデル名を入力してください。');
+    modelNameInput.focus();
+    return;
+  }
+
+  generateBtn.disabled = true;
+  clearError();
+  results.style.display = 'block';
+  output.innerHTML = '<div class="empty-state"><div><strong>生成中です</strong>文案をまとめています。少し待ってください。</div></div>';
 
   try {
-    // 1. Fetch and extract page text
+    setStatus('ページから素材を集めています', true);
     const html = await fetchPage(url);
     const data = extractText(html);
 
     const sourceItems = [
-      data.title && ('タイトル: ' + data.title),
-      data.metaDesc && ('説明: ' + data.metaDesc),
-      data.headings.length && ('見出し: ' + data.headings.join(' / ')),
-      data.keywords.length && ('キーワード: ' + data.keywords.join(' / ')),
-      data.paragraphs.length && ('本文: ' + data.paragraphs.slice(0, 5).join(' | '))
+      data.ogTitle || data.title ? 'タイトル: ' + (data.ogTitle || data.title) : '',
+      data.ogDesc || data.metaDesc ? '説明: ' + (data.ogDesc || data.metaDesc) : '',
+      data.headings.length ? '見出し: ' + data.headings.join(' / ') : '',
+      data.keywords.length ? 'キーワード: ' + data.keywords.join(' / ') : '',
+      data.paragraphs.length ? '本文: ' + data.paragraphs.slice(0, 5).join(' | ') : ''
     ].filter(Boolean);
+
     const sourceText = sourceItems.join('\n');
-    document.getElementById('source-text').textContent = sourceText;
+    sourceTextEl.textContent = sourceText || '抽出できた素材が少ないため、本文の要素は限定的です。';
 
-    // 2. Call Gemini AI
-    document.getElementById('loading').textContent = '🤖 AIが投稿文を考え中...';
-    const texts = await callGemini(apiKey, sourceText, platform, maxChars, extraInstruction);
+    setStatus(`5案を生成しています（${modelName}）`, true);
+    const texts = await callGemini(apiKey, modelName, sourceText, platform, maxChars, extraInstruction);
 
-    // 3. Display results
-    const output = document.getElementById('output');
-    output.innerHTML = '';
-    window._generatedTexts = texts;
-
-    texts.forEach((item, i) => {
-      const charCount = item.text.length;
-      const isOver = charCount > maxChars;
-      const card = document.createElement('div');
-      card.className = 'result-card';
-      card.innerHTML = `
-        <div class="label">${escapeHtml(item.label)}</div>
-        <div class="text">${escapeHtml(item.text)}</div>
-        <div class="meta">
-          <span class="char-count ${isOver ? 'over' : ''}">${charCount}/${maxChars}字</span>
-          <button class="copy-btn" onclick="copyText(this, ${i})">コピー</button>
-        </div>
-      `;
-      output.appendChild(card);
-    });
-
-    document.getElementById('results').style.display = 'block';
-  } catch (e) {
-    alert('エラー: ' + e.message);
+    renderResults(texts, maxChars);
+    updateCostEstimate(modelName, sourceText, texts);
+    setStatus('生成できました。気に入った案をコピーしてください。', false);
+  } catch (error) {
+    output.innerHTML = '<div class="empty-state"><div><strong>まだ結果はありません</strong>内容を確認して、もう一度試してください。</div></div>';
+    priceEstimate.dataset.locked = '';
+    updatePricingUI(modelName);
+    showError(error.message);
+    setStatus('エラーが出ました。入力を見直して再試行してください。', false);
   } finally {
-    btn.disabled = false;
-    document.getElementById('loading').style.display = 'none';
+    generateBtn.disabled = false;
   }
 }
 
-function copyText(btn, idx) {
-  const text = window._generatedTexts[idx].text;
+function copyText(button, index) {
+  const text = window._generatedTexts?.[index]?.text;
+  if (!text) return;
+
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'コピー済';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 2000);
+    const original = button.textContent;
+    button.textContent = 'コピー済み';
+    button.classList.add('copied');
+    setTimeout(() => {
+      button.textContent = original;
+      button.classList.remove('copied');
+    }, 1800);
   });
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
 }
+
+updatePricingUI(modelNameInput.value);
+setStatus('入力するとここに進行が出ます');
 </script>
 </body>
 </html>
